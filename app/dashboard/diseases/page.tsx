@@ -41,7 +41,7 @@ export default function DiseasesPage() {
     treatment: "",
   })
 
-  const canManage = hasRole(["ADMIN"])
+  const canManage = hasRole(["ADMIN","AGRONOMIST"])
 
   useEffect(() => {
     fetchDiseases()
@@ -162,7 +162,7 @@ export default function DiseasesPage() {
   }
 
   return (
-    <AuthGuard requiredRoles={["ADMIN"]}>
+    <AuthGuard requiredRoles={["ADMIN","AGRONOMIST","FARMER"]}>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>

@@ -47,7 +47,7 @@ const navigationItems = [
     title: "Diseases",
     url: "/dashboard/diseases",
     icon: Virus,
-    roles: ["ADMIN"], // Only Admin can access diseases
+    roles: ["AGRONOMIST", "ADMIN","FARMER"], // Only Admin can access diseases
   },
   {
     title: "Medicines",
