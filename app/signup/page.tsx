@@ -103,8 +103,9 @@ export default function SignupPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value={Role.FARMER}>Farmer</SelectItem>
-                  <SelectItem value={Role.AGRONOMIST}>Agronomist</SelectItem>
                   <SelectItem value={Role.RESEARCHER}>Researcher</SelectItem>
+                  <SelectItem value={Role.AGRONOMIST}>Agronomist</SelectItem>
+                  <SelectItem value={Role.ADMIN}>Admin</SelectItem>
                 </SelectContent>
               </Select>
             </div>
