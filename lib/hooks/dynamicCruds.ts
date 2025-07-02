@@ -3,8 +3,7 @@ import {
     useQuery,
     useMutation,
     useQueryClient,
-    UseQueryResult,
-    UseMutationResult,
+    
   } from "@tanstack/react-query";
 import apiClient from "../api/axios";
 export function dynamicCruds<T>() {
@@ -14,7 +13,7 @@ export function dynamicCruds<T>() {
       useQuery<T[]>({
         queryKey: [queryKey],
         queryFn: async () => {
-          const res = await apiClient.get(url)
+          const res = (await apiClient.get(url)).data
           return res.data
         }
       })

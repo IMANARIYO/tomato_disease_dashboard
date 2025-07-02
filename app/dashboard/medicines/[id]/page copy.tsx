@@ -4,6 +4,7 @@ import type React from "react"
 import { useState, useEffect } from "react"
 import { useParams } from "next/navigation"
 import { useAuth } from "@/lib/auth/auth-context"
+import apiClient from "@/lib/api/axios"
 import { adviceApi } from "@/lib/api/advice"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -16,13 +17,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ArrowLeft, Pill, MessageSquare, Eye, WormIcon as Virus } from "lucide-react"
 import Link from "next/link"
 import { toast } from "react-hot-toast"
-import type { Medicine, CreateAdviceRequest } from "@/types"
-import { useQuery } from "@tanstack/react-query"
-import apiClient from "@/lib/api/axios"
+import type { Medicine, Advice, CreateAdviceRequest } from "@/types"
 
 export default function MedicineDetailPage() {
   const params = useParams()
   const { hasRole } = useAuth()
+  const [medicine, setMedicine] = useState<Medicine | null>(null)
+  const [advices, setAdvices] = useState<Advice[]>([])
+  const [isLoading, setIsLoading] = useState(true)
   const [isAdviceSheetOpen, setIsAdviceSheetOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [adviceFormData, setAdviceFormData] = useState<CreateAdviceRequest>({
@@ -32,28 +34,24 @@ export default function MedicineDetailPage() {
 
   const canCreateAdvice = hasRole(["AGRONOMIST"])
 
-  // Use React Query for single medicine fetch
-  const {
-    data: medicine,
-    isLoading,
-    error,
-    refetch,
-  } = useQuery<Medicine>({
-    queryKey: ["medicine", params.id],
-    queryFn: async () => {
-      const response = await apiClient.get(`/medecines/${params.id}`)
-      const data = response.data.data || response.data
-      return data
-    },
-    enabled: !!params.id,
-  })
-
-  // Set medicine ID in advice form when medicine loads
   useEffect(() => {
-    if (medicine?.id) {
-      setAdviceFormData((prev) => ({ ...prev, medicineId: medicine.id }))
+    if (params.id) {
+      fetchMedicine(params.id as string)
     }
-  }, [medicine?.id])
+  }, [params.id])
+
+  const fetchMedicine = async (id: string) => {
+    try {
+      const response = await apiClient.get(`/medecines/${id}`)
+      const data = response.data.data || response.data
+      setMedicine(data)
+      setAdviceFormData({ ...adviceFormData, medicineId: id })
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Failed to fetch medicine details")
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   const handleCreateAdvice = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -66,7 +64,7 @@ export default function MedicineDetailPage() {
       setIsAdviceSheetOpen(false)
       setAdviceFormData({ prescription: "", medicineId: medicine.id })
       // Refresh medicine data to show new advice
-      refetch()
+      fetchMedicine(medicine.id)
     } catch (error: any) {
       toast.error(error.response?.data?.message || "Failed to create advice")
     } finally {
@@ -85,7 +83,7 @@ export default function MedicineDetailPage() {
     )
   }
 
-  if (error || !medicine) {
+  if (!medicine) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
@@ -335,36 +333,16 @@ export default function MedicineDetailPage() {
                   </div>
                 )}
               </TabsContent>
-              <TabsContent value="advice" className="space-y-4 mt-6">
-  {medicine.advices && medicine.advices.length > 0 ? (
-    <div className="grid gap-4">
-      {medicine.advices.map((advice) => (
-        <Card key={advice.id}>
-          <CardHeader>
-            <CardTitle className="text-base">
-              Advice by Agronomist ({advice.agronomist?.user.username || "Unknown"})
-            </CardTitle>
-            <CardDescription>
-              {new Date(advice.createdAt).toLocaleString()}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground whitespace-pre-line">
-              {advice.prescription}
-            </p>
-          </CardContent>
-        </Card>
-      ))}
-    </div>
-  ) : (
-    <div className="text-center py-8">
-      <MessageSquare className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-      <h3 className="text-lg font-semibold mb-2">No expert advice</h3>
-      <p className="text-muted-foreground">No one has added advice for this medicine yet.</p>
-    </div>
-  )}
-</TabsContent>
 
+              <TabsContent value="advice" className="space-y-4 mt-6">
+                <div className="text-center py-8">
+                  <MessageSquare className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">Expert Advice</h3>
+                  <p className="text-muted-foreground">
+                    {canCreateAdvice ? "Create expert advice for this medicine" : "Expert advice will appear here"}
+                  </p>
+                </div>
+              </TabsContent>
             </Tabs>
           </CardContent>
         </Card>

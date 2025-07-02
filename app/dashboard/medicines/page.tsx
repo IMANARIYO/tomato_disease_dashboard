@@ -1,65 +1,179 @@
 "use client"
 
 import type React from "react"
-import { useState, useEffect } from "react"
+import { useState, useMemo } from "react"
 import { useAuth } from "@/lib/auth/auth-context"
-import { medicineApi } from "@/lib/api/medicine"
+
+import { adviceApi } from "@/lib/api/advice"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Badge } from "@/components/ui/badge"
+
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Plus, Edit, Trash2, Eye, AlertTriangle } from "lucide-react"
+import { Plus, Edit, Trash2, Eye, AlertTriangle, MessageSquare, MoreHorizontal, Pill } from "lucide-react"
 import { toast } from "react-hot-toast"
-import type { Medicine, CreateMedicineRequest } from "@/types"
+import type { Medicine, CreateMedicineRequest, CreateAdviceRequest, MedicineRequest } from "@/types"
 import Link from "next/link"
 import { AuthGuard } from "@/components/layout/auth-guard"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { dynamicCruds } from "@/lib/hooks/dynamicCruds"
+import { ColumnDef } from "@tanstack/react-table"
+import { DataTableColumnHeader } from "@/components/table/DataTableColumnHeader"
+import { DataTable } from "@/components/table/data-table"
 
 export default function MedicinesPage() {
   const { hasRole } = useAuth()
-  const [medicines, setMedicines] = useState<Medicine[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+  const { fetchData } = dynamicCruds<Medicine>()
+  const {createData, updateData, deleteData } = dynamicCruds<MedicineRequest>()
+
+  // Fetch medicines using React Query
+  const { data: medicines = [], isLoading, error } = fetchData("/medecines", "medicines")
+  const createMutation = createData("/medecines", "medicines")
+  const updateMutation = updateData("/medecines", "medicines")
+  const deleteMutation = deleteData("/medecines", "medicines")
+
   const [isSheetOpen, setIsSheetOpen] = useState(false)
+  const [isAdviceSheetOpen, setIsAdviceSheetOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [editingMedicine, setEditingMedicine] = useState<Medicine | null>(null)
   const [selectedMedicine, setSelectedMedicine] = useState<Medicine | null>(null)
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [currentPage, setCurrentPage] = useState(1)
-  const [totalPages, setTotalPages] = useState(1)
+  const [instructionInput, setInstructionInput] = useState("")
+
   const [formData, setFormData] = useState<CreateMedicineRequest>({
     name: "",
     description: "",
     usageInstructions: [],
+    diseases: [],
   })
-  const [instructionInput, setInstructionInput] = useState("")
+
+  const [adviceFormData, setAdviceFormData] = useState<CreateAdviceRequest>({
+    prescription: "",
+    medicineId: "",
+  })
 
   const canManage = hasRole(["AGRONOMIST", "ADMIN"])
+  const canCreateAdvice = hasRole(["AGRONOMIST", "ADMIN"])
 
-  useEffect(() => {
-    fetchMedicines()
-  }, [currentPage])
-
-  const fetchMedicines = async () => {
-    setIsLoading(true)
-    try {
-      const response = await medicineApi.getAll(currentPage, 10)
-      setMedicines(response.data)
-      setTotalPages(response.totalPages)
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || "Failed to fetch medicines")
-    } finally {
-      setIsLoading(false)
-    }
-  }
+  // Define columns for the DataTable
+  const columns: ColumnDef<Medicine>[] = useMemo(
+    () => [
+      {
+        accessorKey: "name",
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Name" />,
+        cell: ({ row }) => (
+          <div className="flex items-center space-x-2">
+            <Pill className="h-4 w-4 text-muted-foreground" />
+            <span className="font-medium">{row.getValue("name")}</span>
+          </div>
+        ),
+      },
+      {
+        accessorKey: "description",
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Description" />,
+        cell: ({ row }) => {
+          const description = row.getValue("description") as string
+          return <div className="max-w-xs truncate text-muted-foreground">{description || "No description"}</div>
+        },
+      },
+      {
+        accessorKey: "usageInstructions",
+        header: "Instructions",
+        cell: ({ row }) => {
+          const medicine = row.original
+          const instructionCount = medicine.usageInstructions?.length || 0
+          return (
+            <div className="flex items-center space-x-2">
+              <Badge variant="outline" className="text-xs">
+                {instructionCount} step{instructionCount !== 1 ? "s" : ""}
+              </Badge>
+              {instructionCount > 0 && (
+                <div className="max-w-xs">
+                  <div className="text-xs text-muted-foreground truncate">
+                    {medicine.usageInstructions[0]}
+                    {instructionCount > 1 && "..."}
+                  </div>
+                </div>
+              )}
+            </div>
+          )
+        },
+      },
+      {
+        accessorKey: "diseases",
+        header: "Disease Count",
+        cell: ({ row }) => {
+          const medicine = row.original
+          const diseaseCount = medicine.diseases?.length || 0
+          return (
+            <div className="flex items-center space-x-2">
+              <Badge variant={diseaseCount > 0 ? "default" : "secondary"}>
+                {diseaseCount} disease{diseaseCount !== 1 ? "s" : ""}
+              </Badge>
+            </div>
+          )
+        },
+      },
+      {
+        accessorKey: "createdAt",
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Created" />,
+        cell: ({ row }) => {
+          return new Date(row.getValue("createdAt")).toLocaleDateString()
+        },
+      },
+      {
+        id: "actions",
+        header: "Actions",
+        cell: ({ row }) => {
+          const medicine = row.original
+          return (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="h-8 w-8 p-0">
+                  <span className="sr-only">Open menu</span>
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem asChild>
+                  <Link href={`/dashboard/medicines/${medicine.id}`}>
+                    <Eye className="mr-2 h-4 w-4" />
+                    View Details
+                  </Link>
+                </DropdownMenuItem>
+                {canCreateAdvice && (
+                  <DropdownMenuItem onClick={() => openAdviceSheet(medicine)}>
+                    <MessageSquare className="mr-2 h-4 w-4" />
+                    Create Advice
+                  </DropdownMenuItem>
+                )}
+                {canManage && (
+                  <>
+                    <DropdownMenuItem onClick={() => handleEdit(medicine)}>
+                      <Edit className="mr-2 h-4 w-4" />
+                      Edit
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => openDeleteDialog(medicine)}>
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Delete
+                    </DropdownMenuItem>
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )
+        },
+      },
+    ],
+    [canManage, canCreateAdvice],
+  )
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setIsSubmitting(true)
-
     try {
       const dataToSubmit = {
         ...formData,
@@ -67,20 +181,45 @@ export default function MedicinesPage() {
       }
 
       if (editingMedicine) {
-        await medicineApi.update(editingMedicine.id, dataToSubmit)
+        await updateMutation.mutateAsync({
+          id: editingMedicine.id,
+          data: {
+            ...dataToSubmit,
+            // Use diseaseIds instead of diseases for update
+            diseases: formData.diseases || [],
+          },
+        })
         toast.success("Medicine updated successfully")
       } else {
-        await medicineApi.create(dataToSubmit)
+        await createMutation.mutateAsync({
+          ...dataToSubmit,
+          // Use diseaseIds instead of diseases for create
+          diseases: formData.diseases || [],
+        })
         toast.success("Medicine created successfully")
       }
       setIsSheetOpen(false)
       setEditingMedicine(null)
       resetForm()
-      fetchMedicines()
     } catch (error: any) {
       toast.error(error.response?.data?.message || "Failed to save medicine")
-    } finally {
-      setIsSubmitting(false)
+    }
+  }
+
+  const handleAdviceSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!selectedMedicine) return
+
+    try {
+      await adviceApi.createOnMedicine({
+        ...adviceFormData,
+        medicineId: selectedMedicine.id,
+      })
+      toast.success("Advice created successfully")
+      setIsAdviceSheetOpen(false)
+      setAdviceFormData({ prescription: "", medicineId: "" })
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Failed to create advice")
     }
   }
 
@@ -90,6 +229,7 @@ export default function MedicinesPage() {
       name: medicine.name,
       description: medicine.description || "",
       usageInstructions: medicine.usageInstructions,
+      diseases: medicine.diseases?.map((d) => d.id) || [],
     })
     setInstructionInput(medicine.usageInstructions.join("\n"))
     setIsSheetOpen(true)
@@ -97,13 +237,11 @@ export default function MedicinesPage() {
 
   const handleDelete = async () => {
     if (!selectedMedicine) return
-
     try {
-      await medicineApi.delete(selectedMedicine.id)
+      await deleteMutation.mutateAsync(selectedMedicine.id)
       toast.success("Medicine deleted successfully")
       setIsDeleteDialogOpen(false)
       setSelectedMedicine(null)
-      fetchMedicines()
     } catch (error: any) {
       toast.error(error.response?.data?.message || "Failed to delete medicine")
     }
@@ -114,11 +252,18 @@ export default function MedicinesPage() {
     setIsDeleteDialogOpen(true)
   }
 
+  const openAdviceSheet = (medicine: Medicine) => {
+    setSelectedMedicine(medicine)
+    setAdviceFormData({ prescription: "", medicineId: medicine.id })
+    setIsAdviceSheetOpen(true)
+  }
+
   const resetForm = () => {
     setFormData({
       name: "",
       description: "",
       usageInstructions: [],
+      diseases: [],
     })
     setInstructionInput("")
   }
@@ -127,6 +272,17 @@ export default function MedicinesPage() {
     resetForm()
     setEditingMedicine(null)
     setIsSheetOpen(true)
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <h3 className="text-lg font-semibold text-red-600">Error loading medicines</h3>
+          <p className="text-muted-foreground">Please try again later</p>
+        </div>
+      </div>
+    )
   }
 
   if (isLoading) {
@@ -188,7 +344,7 @@ export default function MedicinesPage() {
                       onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                       placeholder="e.g., Copper Fungicide"
                       required
-                      disabled={isSubmitting}
+                      disabled={createMutation.isPending || updateMutation.isPending}
                     />
                   </div>
 
@@ -199,19 +355,20 @@ export default function MedicinesPage() {
                       value={formData.description}
                       onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                       placeholder="Brief description of the medicine and its uses"
-                      disabled={isSubmitting}
+                      disabled={createMutation.isPending || updateMutation.isPending}
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="instructions">Usage Instructions</Label>
+                    <Label htmlFor="instructions">Usage Instructions *</Label>
                     <Textarea
                       id="instructions"
                       value={instructionInput}
                       onChange={(e) => setInstructionInput(e.target.value)}
                       placeholder="Enter each instruction on a new line:&#10;1. Mix 2ml per liter of water&#10;2. Spray on affected leaves&#10;3. Repeat every 7 days"
                       rows={6}
-                      disabled={isSubmitting}
+                      disabled={createMutation.isPending || updateMutation.isPending}
+                      required
                     />
                     <p className="text-sm text-muted-foreground">
                       Enter each instruction on a new line. They will be displayed as numbered steps.
@@ -223,12 +380,16 @@ export default function MedicinesPage() {
                       type="button"
                       variant="outline"
                       onClick={() => setIsSheetOpen(false)}
-                      disabled={isSubmitting}
+                      disabled={createMutation.isPending || updateMutation.isPending}
                     >
                       Cancel
                     </Button>
-                    <Button type="submit" disabled={isSubmitting}>
-                      {isSubmitting ? "Saving..." : editingMedicine ? "Update Medicine" : "Create Medicine"}
+                    <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending}>
+                      {createMutation.isPending || updateMutation.isPending
+                        ? "Saving..."
+                        : editingMedicine
+                          ? "Update Medicine"
+                          : "Create Medicine"}
                     </Button>
                   </div>
                 </form>
@@ -240,97 +401,65 @@ export default function MedicinesPage() {
         <Card>
           <CardHeader>
             <CardTitle>Medicine Database</CardTitle>
-            <CardDescription>Available treatments and medications for tomato diseases</CardDescription>
+            <CardDescription>
+              Available treatments and medications for tomato diseases with advanced filtering and sorting
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            {medicines.length === 0 ? (
-              <div className="text-center py-12">
-                <div className="h-12 w-12 text-muted-foreground mx-auto mb-4">💊</div>
-                <h3 className="text-lg font-semibold mb-2">No medicines found</h3>
-                <p className="text-muted-foreground">
-                  {canManage ? "Add your first medicine to get started" : "No medicines have been added yet"}
-                </p>
-              </div>
-            ) : (
-              <>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Description</TableHead>
-                      <TableHead>Instructions</TableHead>
-                      <TableHead>Diseases</TableHead>
-                      <TableHead>Created</TableHead>
-                      <TableHead>Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {medicines.map((medicine) => (
-                      <TableRow key={medicine.id}>
-                        <TableCell className="font-medium">{medicine.name}</TableCell>
-                        <TableCell className="text-muted-foreground max-w-xs truncate">
-                          {medicine.description || "N/A"}
-                        </TableCell>
-                        <TableCell>
-                          <span className="text-sm text-muted-foreground">
-                            {medicine.usageInstructions.length} step{medicine.usageInstructions.length !== 1 ? "s" : ""}
-                          </span>
-                        </TableCell>
-                        <TableCell>{medicine.diseases?.length || 0}</TableCell>
-                        <TableCell>{new Date(medicine.createdAt).toLocaleDateString()}</TableCell>
-                        <TableCell>
-                          <div className="flex items-center space-x-2">
-                            <Button variant="ghost" size="sm" asChild>
-                              <Link href={`/dashboard/medicines/${medicine.id}`}>
-                                <Eye className="h-4 w-4" />
-                              </Link>
-                            </Button>
-                            {canManage && (
-                              <>
-                                <Button variant="ghost" size="sm" onClick={() => handleEdit(medicine)}>
-                                  <Edit className="h-4 w-4" />
-                                </Button>
-                                <Button variant="ghost" size="sm" onClick={() => openDeleteDialog(medicine)}>
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </>
-                            )}
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-
-                {/* Pagination */}
-                <div className="flex items-center justify-between mt-4">
-                  <p className="text-sm text-muted-foreground">Showing {medicines.length} medicines</p>
-                  <div className="flex items-center space-x-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
-                      disabled={currentPage === 1}
-                    >
-                      Previous
-                    </Button>
-                    <span className="text-sm">
-                      Page {currentPage} of {totalPages}
-                    </span>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
-                      disabled={currentPage === totalPages}
-                    >
-                      Next
-                    </Button>
-                  </div>
-                </div>
-              </>
-            )}
+            <DataTable
+              columns={columns}
+              data={medicines}
+              filterColumns={["name", "description"]}
+              filterPlaceholder="Search medicines..."
+            />
           </CardContent>
         </Card>
+
+        {/* Create Advice Sheet */}
+        <Sheet open={isAdviceSheetOpen} onOpenChange={setIsAdviceSheetOpen}>
+          <SheetContent className="w-[600px] sm:max-w-[600px]">
+            <SheetHeader>
+              <SheetTitle className="flex items-center space-x-2">
+                <MessageSquare className="h-5 w-5" />
+                <span>Create Advice for {selectedMedicine?.name}</span>
+              </SheetTitle>
+              <SheetDescription>Provide expert advice and recommendations for this medicine</SheetDescription>
+            </SheetHeader>
+            <form onSubmit={handleAdviceSubmit} className="space-y-6 mt-6">
+              <div className="bg-blue-50 dark:bg-blue-950/20 p-4 rounded-lg">
+                <div className="flex items-center space-x-2 mb-2">
+                  <Pill className="h-4 w-4 text-blue-600" />
+                  <span className="font-medium text-blue-600">Medicine Information</span>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Creating advice for: <strong>{selectedMedicine?.name}</strong>
+                </p>
+                {selectedMedicine?.description && (
+                  <p className="text-xs text-muted-foreground mt-1">{selectedMedicine.description}</p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="prescription">Advice & Prescription *</Label>
+                <Textarea
+                  id="prescription"
+                  value={adviceFormData.prescription}
+                  onChange={(e) => setAdviceFormData({ ...adviceFormData, prescription: e.target.value })}
+                  placeholder="Provide detailed advice for using this medicine..."
+                  rows={6}
+                  required
+                />
+              </div>
+
+              <div className="flex justify-end space-x-2">
+                <Button type="button" variant="outline" onClick={() => setIsAdviceSheetOpen(false)}>
+                  Cancel
+                </Button>
+                <Button type="submit">Create Advice</Button>
+              </div>
+            </form>
+          </SheetContent>
+        </Sheet>
 
         {/* Delete Confirmation Dialog */}
         <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
@@ -349,8 +478,8 @@ export default function MedicinesPage() {
               <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
                 Cancel
               </Button>
-              <Button variant="destructive" onClick={handleDelete}>
-                Delete Medicine
+              <Button variant="destructive" onClick={handleDelete} disabled={deleteMutation.isPending}>
+                {deleteMutation.isPending ? "Deleting..." : "Delete Medicine"}
               </Button>
             </div>
           </DialogContent>

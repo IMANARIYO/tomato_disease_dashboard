@@ -55,7 +55,7 @@ export interface Farmer {
 export interface Agronomist {
   id: string
   userId: string
-  name: string
+  user: User
   latitude?: number
   longitude?: number
   regionId?: string
@@ -98,9 +98,26 @@ export interface Disease {
   detections: Detection[]
   diseaseStats: DiseaseStat[]
   medicines: Medicine[]
+
   createdAt: string
   updatedAt: string
 }
+export interface CreateOrUpdateDiseaseRequest {
+  id: string
+  name: string
+  description?: string
+  scientificName?: string
+  symptoms?: string
+  severity?: string
+  prevention?: string
+  treatment?: string
+  detections: string[]
+  diseaseStats: string[]
+  medicines: string[]
+
+  createdAt: string
+  updatedAt: string}
+
 
 export interface Detection {
   id: string
@@ -181,6 +198,17 @@ export interface Medicine {
   createdAt: string
   updatedAt: string
 }
+export interface MedicineRequest {
+  id: string
+  name: string
+  description?: string
+  usageInstructions: string[]
+  advices:  string[]
+  diseases:  string[]
+  createdAt: string
+  updatedAt: string
+}
+
 
 export interface AuthResponse {
   data: {
@@ -216,6 +244,10 @@ export interface CreateDiseaseRequest {
   scientificName?: string
   symptoms?: string
   severity?: string
+  medicines?: string[]
+  detections?: string[]
+  diseaseStats?: string[]
+  createdAt?: string
   prevention?: string
   treatment?: string
 }
@@ -224,7 +256,7 @@ export interface CreateMedicineRequest {
   name: string
   description?: string
   usageInstructions: string[]
-  diseaseIds?: string[]
+  diseases?: string[]
 }
 
 export interface CreateAdviceRequest {

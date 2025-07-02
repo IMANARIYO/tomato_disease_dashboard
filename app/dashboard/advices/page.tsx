@@ -211,7 +211,7 @@ export default function AdvicesPage() {
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center space-x-2">
-                      <Badge variant="secondary">{advice.agronomist?.name || "Unknown"}</Badge>
+                      <Badge variant="secondary">{advice.agronomist?.user.username || "Unknown"}</Badge>
                     </div>
                   </TableCell>
                   <TableCell>
