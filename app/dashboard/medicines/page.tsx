@@ -1,70 +1,134 @@
-"use client"
+"use client";
 
-import type React from "react"
-import { useState, useMemo } from "react"
-import { useAuth } from "@/lib/auth/auth-context"
+import type React from "react";
+import { useState, useMemo } from "react";
+import { useAuth } from "@/lib/auth/auth-context";
 
-import { adviceApi } from "@/lib/api/advice"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
+import { adviceApi } from "@/lib/api/advice";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Command, CommandGroup, CommandItem } from "@/components/ui/command";
+import { Check, X } from "lucide-react";
+import { cn } from "@/lib/utils";
 
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Skeleton } from "@/components/ui/skeleton"
-import { Plus, Edit, Trash2, Eye, AlertTriangle, MessageSquare, MoreHorizontal, Pill } from "lucide-react"
-import { toast } from "react-hot-toast"
-import type { Medicine, CreateMedicineRequest, CreateAdviceRequest, MedicineRequest } from "@/types"
-import Link from "next/link"
-import { AuthGuard } from "@/components/layout/auth-guard"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { dynamicCruds } from "@/lib/hooks/dynamicCruds"
-import { ColumnDef } from "@tanstack/react-table"
-import { DataTableColumnHeader } from "@/components/table/DataTableColumnHeader"
-import { DataTable } from "@/components/table/data-table"
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Plus,
+  Edit,
+  Trash2,
+  Eye,
+  AlertTriangle,
+  MessageSquare,
+  MoreHorizontal,
+  Pill,
+} from "lucide-react";
+import { toast } from "react-hot-toast";
+import type {
+  Medicine,
+  CreateMedicineRequest,
+  CreateAdviceRequest,
+  MedicineRequest,
+} from "@/types";
+import Link from "next/link";
+import { AuthGuard } from "@/components/layout/auth-guard";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { dynamicCruds } from "@/lib/hooks/dynamicCruds";
+import { ColumnDef } from "@tanstack/react-table";
+import { DataTableColumnHeader } from "@/components/table/DataTableColumnHeader";
+import { DataTable } from "@/components/table/data-table";
+import { useAppContext } from "@/Config/AppProvider";
+import { useCreateData } from "@/hooks/apiHooks";
 
 export default function MedicinesPage() {
-  const { hasRole } = useAuth()
-  const { fetchData } = dynamicCruds<Medicine>()
-  const {createData, updateData, deleteData } = dynamicCruds<MedicineRequest>()
+  const { hasRole } = useAuth();
+  const { fetchData } = dynamicCruds<Medicine>();
+  const { createData, updateData, deleteData } =
+    dynamicCruds<MedicineRequest>();
 
   // Fetch medicines using React Query
-  const { data: medicines = [], isLoading, error } = fetchData("/medecines", "medicines")
-  const createMutation = createData("/medecines", "medicines")
-  const updateMutation = updateData("/medecines", "medicines")
-  const deleteMutation = deleteData("/medecines", "medicines")
+  const {
+    data: medicines = [],
+    isLoading,
+    error,
+  } = fetchData("/medecines", "medicines");
+  // const createMutation = createData("/medecines", "medicines");
+  // const updateMutation = updateData("/medecines", "medicines");
+  const deleteMutation = deleteData("/medecines", "medicines");
 
-  const [isSheetOpen, setIsSheetOpen] = useState(false)
-  const [isAdviceSheetOpen, setIsAdviceSheetOpen] = useState(false)
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
-  const [editingMedicine, setEditingMedicine] = useState<Medicine | null>(null)
-  const [selectedMedicine, setSelectedMedicine] = useState<Medicine | null>(null)
-  const [instructionInput, setInstructionInput] = useState("")
+  const {
+    mutate: createMedicineMutation,
+    isPending: isCreating,
+    error: createError,
+  } = useCreateData("/medecines");
+
+  const [isSheetOpen, setIsSheetOpen] = useState(false);
+  const [isAdviceSheetOpen, setIsAdviceSheetOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [editingMedicine, setEditingMedicine] = useState<Medicine | null>(null);
+  const [selectedMedicine, setSelectedMedicine] = useState<Medicine | null>(
+    null
+  );
+  const [instructionInput, setInstructionInput] = useState("");
+  const { diseasesData } = useAppContext();
 
   const [formData, setFormData] = useState<CreateMedicineRequest>({
     name: "",
     description: "",
     usageInstructions: [],
     diseases: [],
-  })
+  });
 
   const [adviceFormData, setAdviceFormData] = useState<CreateAdviceRequest>({
     prescription: "",
     medicineId: "",
-  })
+  });
 
-  const canManage = hasRole(["AGRONOMIST", "ADMIN"])
-  const canCreateAdvice = hasRole(["AGRONOMIST", "ADMIN"])
+  const canManage = hasRole(["AGRONOMIST", "ADMIN"]);
+  const canCreateAdvice = hasRole(["AGRONOMIST", "ADMIN"]);
 
   // Define columns for the DataTable
   const columns: ColumnDef<Medicine>[] = useMemo(
     () => [
       {
         accessorKey: "name",
-        header: ({ column }) => <DataTableColumnHeader column={column} title="Name" />,
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Name" />
+        ),
         cell: ({ row }) => (
           <div className="flex items-center space-x-2">
             <Pill className="h-4 w-4 text-muted-foreground" />
@@ -74,18 +138,24 @@ export default function MedicinesPage() {
       },
       {
         accessorKey: "description",
-        header: ({ column }) => <DataTableColumnHeader column={column} title="Description" />,
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Description" />
+        ),
         cell: ({ row }) => {
-          const description = row.getValue("description") as string
-          return <div className="max-w-xs truncate text-muted-foreground">{description || "No description"}</div>
+          const description = row.getValue("description") as string;
+          return (
+            <div className="max-w-xs truncate text-muted-foreground">
+              {description || "No description"}
+            </div>
+          );
         },
       },
       {
         accessorKey: "usageInstructions",
         header: "Instructions",
         cell: ({ row }) => {
-          const medicine = row.original
-          const instructionCount = medicine.usageInstructions?.length || 0
+          const medicine = row.original;
+          const instructionCount = medicine.usageInstructions?.length || 0;
           return (
             <div className="flex items-center space-x-2">
               <Badge variant="outline" className="text-xs">
@@ -94,42 +164,44 @@ export default function MedicinesPage() {
               {instructionCount > 0 && (
                 <div className="max-w-xs">
                   <div className="text-xs text-muted-foreground truncate">
-                    {medicine.usageInstructions[0]}
+                    {medicine.usageInstructions[0].slice(0, 5)}
                     {instructionCount > 1 && "..."}
                   </div>
                 </div>
               )}
             </div>
-          )
+          );
         },
       },
       {
         accessorKey: "diseases",
         header: "Disease Count",
         cell: ({ row }) => {
-          const medicine = row.original
-          const diseaseCount = medicine.diseases?.length || 0
+          const medicine = row.original;
+          const diseaseCount = medicine.diseases?.length || 0;
           return (
             <div className="flex items-center space-x-2">
               <Badge variant={diseaseCount > 0 ? "default" : "secondary"}>
                 {diseaseCount} disease{diseaseCount !== 1 ? "s" : ""}
               </Badge>
             </div>
-          )
+          );
         },
       },
       {
         accessorKey: "createdAt",
-        header: ({ column }) => <DataTableColumnHeader column={column} title="Created" />,
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Created" />
+        ),
         cell: ({ row }) => {
-          return new Date(row.getValue("createdAt")).toLocaleDateString()
+          return new Date(row.getValue("createdAt")).toLocaleDateString();
         },
       },
       {
         id: "actions",
         header: "Actions",
         cell: ({ row }) => {
-          const medicine = row.original
+          const medicine = row.original;
           return (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -157,7 +229,9 @@ export default function MedicinesPage() {
                       <Edit className="mr-2 h-4 w-4" />
                       Edit
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => openDeleteDialog(medicine)}>
+                    <DropdownMenuItem
+                      onClick={() => openDeleteDialog(medicine)}
+                    >
                       <Trash2 className="mr-2 h-4 w-4" />
                       Delete
                     </DropdownMenuItem>
@@ -165,98 +239,122 @@ export default function MedicinesPage() {
                 )}
               </DropdownMenuContent>
             </DropdownMenu>
-          )
+          );
         },
       },
     ],
-    [canManage, canCreateAdvice],
-  )
+    [canManage, canCreateAdvice]
+  );
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
     try {
       const dataToSubmit = {
         ...formData,
-        usageInstructions: instructionInput.split("\n").filter((line) => line.trim() !== ""),
-      }
+        usageInstructions: instructionInput
+          .split("\n")
+          .filter((line) => line.trim() !== ""),
+      };
 
       if (editingMedicine) {
-        await updateMutation.mutateAsync({
-          id: editingMedicine.id,
-          data: {
-            ...dataToSubmit,
-            // Use diseaseIds instead of diseases for update
-            diseases: formData.diseases || [],
-          },
-        })
-        toast.success("Medicine updated successfully")
+        // await updateMutation.mutateAsync({
+        //   id: editingMedicine.id,
+        //   data: {
+        //     ...dataToSubmit,
+        //     // Use diseaseIds instead of diseases for update
+        //     diseases: formData.diseases || [],
+        //   },
+        // });
+        toast.success("Medicine updated successfully");
       } else {
-        await createMutation.mutateAsync({
-          ...dataToSubmit,
-          // Use diseaseIds instead of diseases for create
-          diseases: formData.diseases || [],
-        })
-        toast.success("Medicine created successfully")
+        createMedicineMutation(
+          {
+            ...dataToSubmit,
+            // diseases: formData.diseases?.map((disease) => disease.id) || [],
+
+            diseases:
+              formData.diseases?.map(
+                (disease) => disease.id
+                // name: disease.name,
+              ) || [],
+          },
+          {
+            onSuccess: (data) => {
+              setFormData({
+                name: "",
+                description: "",
+                usageInstructions: [],
+                diseases: [],
+              });
+            },
+            onError: (error: any) => {
+              toast.error(
+                error.response?.data?.message || "Failed to create medicine"
+              );
+            },
+          }
+        );
+        toast.success("Medicine created successfully");
       }
-      setIsSheetOpen(false)
-      setEditingMedicine(null)
-      resetForm()
+      setIsSheetOpen(false);
+      setEditingMedicine(null);
+      resetForm();
     } catch (error: any) {
-      toast.error(error.response?.data?.message || "Failed to save medicine")
+      toast.error(error.response?.data?.message || "Failed to save medicine");
     }
-  }
+  };
 
   const handleAdviceSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!selectedMedicine) return
+    e.preventDefault();
+    if (!selectedMedicine) return;
 
     try {
       await adviceApi.createOnMedicine({
         ...adviceFormData,
         medicineId: selectedMedicine.id,
-      })
-      toast.success("Advice created successfully")
-      setIsAdviceSheetOpen(false)
-      setAdviceFormData({ prescription: "", medicineId: "" })
+      });
+      toast.success("Advice created successfully");
+      setIsAdviceSheetOpen(false);
+      setAdviceFormData({ prescription: "", medicineId: "" });
     } catch (error: any) {
-      toast.error(error.response?.data?.message || "Failed to create advice")
+      toast.error(error.response?.data?.message || "Failed to create advice");
     }
-  }
+  };
 
   const handleEdit = (medicine: Medicine) => {
-    setEditingMedicine(medicine)
+    setEditingMedicine(medicine);
     setFormData({
       name: medicine.name,
       description: medicine.description || "",
       usageInstructions: medicine.usageInstructions,
       diseases: medicine.diseases?.map((d) => d.id) || [],
-    })
-    setInstructionInput(medicine.usageInstructions.join("\n"))
-    setIsSheetOpen(true)
-  }
+    });
+    setInstructionInput(medicine.usageInstructions.join("\n"));
+    setIsSheetOpen(true);
+  };
 
   const handleDelete = async () => {
-    if (!selectedMedicine) return
+    if (!selectedMedicine) return;
     try {
-      await deleteMutation.mutateAsync(selectedMedicine.id)
-      toast.success("Medicine deleted successfully")
-      setIsDeleteDialogOpen(false)
-      setSelectedMedicine(null)
+      await deleteMutation.mutateAsync(selectedMedicine.id);
+      toast.success("Medicine deleted successfully");
+      setIsDeleteDialogOpen(false);
+      setSelectedMedicine(null);
     } catch (error: any) {
-      toast.error(error.response?.data?.message || "Failed to delete medicine")
+      toast.error(error.response?.data?.message || "Failed to delete medicine");
     }
-  }
+  };
 
   const openDeleteDialog = (medicine: Medicine) => {
-    setSelectedMedicine(medicine)
-    setIsDeleteDialogOpen(true)
-  }
+    setSelectedMedicine(medicine);
+    setIsDeleteDialogOpen(true);
+  };
 
   const openAdviceSheet = (medicine: Medicine) => {
-    setSelectedMedicine(medicine)
-    setAdviceFormData({ prescription: "", medicineId: medicine.id })
-    setIsAdviceSheetOpen(true)
-  }
+    setSelectedMedicine(medicine);
+    setAdviceFormData({ prescription: "", medicineId: medicine.id });
+    setIsAdviceSheetOpen(true);
+  };
 
   const resetForm = () => {
     setFormData({
@@ -264,25 +362,27 @@ export default function MedicinesPage() {
       description: "",
       usageInstructions: [],
       diseases: [],
-    })
-    setInstructionInput("")
-  }
+    });
+    setInstructionInput("");
+  };
 
   const openCreateSheet = () => {
-    resetForm()
-    setEditingMedicine(null)
-    setIsSheetOpen(true)
-  }
+    resetForm();
+    setEditingMedicine(null);
+    setIsSheetOpen(true);
+  };
 
   if (error) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
-          <h3 className="text-lg font-semibold text-red-600">Error loading medicines</h3>
+          <h3 className="text-lg font-semibold text-red-600">
+            Error loading medicines
+          </h3>
           <p className="text-muted-foreground">Please try again later</p>
         </div>
       </div>
-    )
+    );
   }
 
   if (isLoading) {
@@ -309,7 +409,7 @@ export default function MedicinesPage() {
           </CardContent>
         </Card>
       </div>
-    )
+    );
   }
 
   return (
@@ -318,7 +418,9 @@ export default function MedicinesPage() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Medicines</h1>
-            <p className="text-muted-foreground">Manage treatment medications and prescriptions</p>
+            <p className="text-muted-foreground">
+              Manage treatment medications and prescriptions
+            </p>
           </div>
           {canManage && (
             <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
@@ -330,9 +432,13 @@ export default function MedicinesPage() {
               </SheetTrigger>
               <SheetContent className="w-[600px] sm:max-w-[600px]">
                 <SheetHeader>
-                  <SheetTitle>{editingMedicine ? "Edit Medicine" : "Add New Medicine"}</SheetTitle>
+                  <SheetTitle>
+                    {editingMedicine ? "Edit Medicine" : "Add New Medicine"}
+                  </SheetTitle>
                   <SheetDescription>
-                    {editingMedicine ? "Update medicine information" : "Add a new medicine to the database"}
+                    {editingMedicine
+                      ? "Update medicine information"
+                      : "Add a new medicine to the database"}
                   </SheetDescription>
                 </SheetHeader>
                 <form onSubmit={handleSubmit} className="space-y-6 mt-6">
@@ -341,24 +447,39 @@ export default function MedicinesPage() {
                     <Input
                       id="name"
                       value={formData.name}
-                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      onChange={(e) =>
+                        setFormData({ ...formData, name: e.target.value })
+                      }
                       placeholder="e.g., Copper Fungicide"
                       required
-                      disabled={createMutation.isPending || updateMutation.isPending}
+                      disabled={isCreating}
                     />
                   </div>
-
                   <div className="space-y-2">
                     <Label htmlFor="description">Description</Label>
                     <Textarea
                       id="description"
                       value={formData.description}
-                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          description: e.target.value,
+                        })
+                      }
                       placeholder="Brief description of the medicine and its uses"
-                      disabled={createMutation.isPending || updateMutation.isPending}
+                      // disabled={
+                      //   createMutation.isPending || updateMutation.isPending
+                      // }
                     />
                   </div>
-
+                  <MultiSelectWithObjects
+                    options={diseasesData?.data || []} // Array of Disease objects
+                    selected={formData.diseases || []}
+                    onChange={(selected) =>
+                      setFormData({ ...formData, diseases: selected })
+                    }
+                    placeholder="Select diseases treated by this medicine"
+                  />
                   <div className="space-y-2">
                     <Label htmlFor="instructions">Usage Instructions *</Label>
                     <Textarea
@@ -367,11 +488,14 @@ export default function MedicinesPage() {
                       onChange={(e) => setInstructionInput(e.target.value)}
                       placeholder="Enter each instruction on a new line:&#10;1. Mix 2ml per liter of water&#10;2. Spray on affected leaves&#10;3. Repeat every 7 days"
                       rows={6}
-                      disabled={createMutation.isPending || updateMutation.isPending}
+                      // disabled={
+                      //   createMutation.isPending || updateMutation.isPending
+                      // }
                       required
                     />
                     <p className="text-sm text-muted-foreground">
-                      Enter each instruction on a new line. They will be displayed as numbered steps.
+                      Enter each instruction on a new line. They will be
+                      displayed as numbered steps.
                     </p>
                   </div>
 
@@ -380,16 +504,23 @@ export default function MedicinesPage() {
                       type="button"
                       variant="outline"
                       onClick={() => setIsSheetOpen(false)}
-                      disabled={createMutation.isPending || updateMutation.isPending}
+                      // disabled={
+                      //   createMutation.isPending || updateMutation.isPending
+                      // }
                     >
                       Cancel
                     </Button>
-                    <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending}>
-                      {createMutation.isPending || updateMutation.isPending
+                    <Button
+                      type="submit"
+                      // disabled={
+                      //   createMutation.isPending || updateMutation.isPending
+                      // }
+                    >
+                      {isCreating
                         ? "Saving..."
                         : editingMedicine
-                          ? "Update Medicine"
-                          : "Create Medicine"}
+                        ? "Update Medicine"
+                        : "Create Medicine"}
                     </Button>
                   </div>
                 </form>
@@ -402,7 +533,8 @@ export default function MedicinesPage() {
           <CardHeader>
             <CardTitle>Medicine Database</CardTitle>
             <CardDescription>
-              Available treatments and medications for tomato diseases with advanced filtering and sorting
+              Available treatments and medications for tomato diseases with
+              advanced filtering and sorting
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -423,19 +555,25 @@ export default function MedicinesPage() {
                 <MessageSquare className="h-5 w-5" />
                 <span>Create Advice for {selectedMedicine?.name}</span>
               </SheetTitle>
-              <SheetDescription>Provide expert advice and recommendations for this medicine</SheetDescription>
+              <SheetDescription>
+                Provide expert advice and recommendations for this medicine
+              </SheetDescription>
             </SheetHeader>
             <form onSubmit={handleAdviceSubmit} className="space-y-6 mt-6">
               <div className="bg-blue-50 dark:bg-blue-950/20 p-4 rounded-lg">
                 <div className="flex items-center space-x-2 mb-2">
                   <Pill className="h-4 w-4 text-blue-600" />
-                  <span className="font-medium text-blue-600">Medicine Information</span>
+                  <span className="font-medium text-blue-600">
+                    Medicine Information
+                  </span>
                 </div>
                 <p className="text-sm text-muted-foreground">
                   Creating advice for: <strong>{selectedMedicine?.name}</strong>
                 </p>
                 {selectedMedicine?.description && (
-                  <p className="text-xs text-muted-foreground mt-1">{selectedMedicine.description}</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {selectedMedicine.description}
+                  </p>
                 )}
               </div>
 
@@ -444,7 +582,12 @@ export default function MedicinesPage() {
                 <Textarea
                   id="prescription"
                   value={adviceFormData.prescription}
-                  onChange={(e) => setAdviceFormData({ ...adviceFormData, prescription: e.target.value })}
+                  onChange={(e) =>
+                    setAdviceFormData({
+                      ...adviceFormData,
+                      prescription: e.target.value,
+                    })
+                  }
                   placeholder="Provide detailed advice for using this medicine..."
                   rows={6}
                   required
@@ -452,7 +595,11 @@ export default function MedicinesPage() {
               </div>
 
               <div className="flex justify-end space-x-2">
-                <Button type="button" variant="outline" onClick={() => setIsAdviceSheetOpen(false)}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setIsAdviceSheetOpen(false)}
+                >
                   Cancel
                 </Button>
                 <Button type="submit">Create Advice</Button>
@@ -470,15 +617,23 @@ export default function MedicinesPage() {
                 <span>Confirm Deletion</span>
               </DialogTitle>
               <DialogDescription>
-                Are you sure you want to delete "{selectedMedicine?.name}"? This action cannot be undone and will affect
-                all related advice and prescriptions.
+                Are you sure you want to delete "{selectedMedicine?.name}"? This
+                action cannot be undone and will affect all related advice and
+                prescriptions.
               </DialogDescription>
             </DialogHeader>
             <div className="flex justify-end space-x-2 mt-4">
-              <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
+              <Button
+                variant="outline"
+                onClick={() => setIsDeleteDialogOpen(false)}
+              >
                 Cancel
               </Button>
-              <Button variant="destructive" onClick={handleDelete} disabled={deleteMutation.isPending}>
+              <Button
+                variant="destructive"
+                onClick={handleDelete}
+                disabled={deleteMutation.isPending}
+              >
                 {deleteMutation.isPending ? "Deleting..." : "Delete Medicine"}
               </Button>
             </div>
@@ -486,5 +641,89 @@ export default function MedicinesPage() {
         </Dialog>
       </div>
     </AuthGuard>
-  )
+  );
+}
+
+interface MultiSelectProps {
+  options: any[];
+  selected: any[];
+  onChange: (selected: any[]) => void;
+  placeholder?: string;
+}
+
+export function MultiSelectWithObjects({
+  options,
+  selected,
+  onChange,
+  placeholder = "Select diseases",
+}: MultiSelectProps) {
+  const [open, setOpen] = useState(false);
+
+  const isSelected = (option: any) =>
+    selected.some((item) => item.id === option.id);
+
+  const toggleOption = (option: any) => {
+    if (isSelected(option)) {
+      onChange(selected.filter((item) => item.id !== option.id));
+    } else {
+      onChange([...selected, option]);
+    }
+  };
+
+  return (
+    <div className="space-y-2">
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            variant="outline"
+            className="w-full justify-start flex-wrap text-left"
+          >
+            {selected.length > 0 ? (
+              <div className="flex gap-1 flex-wrap">
+                {selected.map((item) => (
+                  <Badge
+                    key={item.id}
+                    className="flex items-center gap-1"
+                    variant="secondary"
+                  >
+                    {item.name}
+                    <X
+                      className="h-3 w-3 cursor-pointer"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleOption(item);
+                      }}
+                    />
+                  </Badge>
+                ))}
+              </div>
+            ) : (
+              <span className="text-muted-foreground">{placeholder}</span>
+            )}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-[300px] p-0">
+          <Command>
+            <CommandGroup>
+              {options.map((option) => (
+                <CommandItem
+                  key={option.id}
+                  onSelect={() => toggleOption(option)}
+                  className="cursor-pointer"
+                >
+                  <Check
+                    className={cn(
+                      "mr-2 h-4 w-4",
+                      isSelected(option) ? "opacity-100" : "opacity-0"
+                    )}
+                  />
+                  {option.name}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </Command>
+        </PopoverContent>
+      </Popover>
+    </div>
+  );
 }

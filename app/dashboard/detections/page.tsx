@@ -1,123 +1,167 @@
-"use client"
+"use client";
 
-import type React from "react"
-import { useState, useEffect } from "react"
-import { useAuth } from "@/lib/auth/auth-context"
-import { detectionApi } from "@/lib/api/detection"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Badge } from "@/components/ui/badge"
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Skeleton } from "@/components/ui/skeleton"
-import { Camera, Upload, Eye, Trash2, Plus, MessageSquare, AlertTriangle } from "lucide-react"
-import { toast } from "react-hot-toast"
-import type { Detection, CreateDetectionRequest } from "@/types"
-import Link from "next/link"
+import type React from "react";
+import { useState, useEffect } from "react";
+import { useAuth } from "@/lib/auth/auth-context";
+import { detectionApi } from "@/lib/api/detection";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Camera,
+  Upload,
+  Eye,
+  Trash2,
+  Plus,
+  MessageSquare,
+  AlertTriangle,
+} from "lucide-react";
+import { toast } from "react-hot-toast";
+import type { Detection, CreateDetectionRequest } from "@/types";
+import Link from "next/link";
 
 export default function DetectionsPage() {
-  const { hasRole, user } = useAuth()
-  const [detections, setDetections] = useState<Detection[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [isSheetOpen, setIsSheetOpen] = useState(false)
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
-  const [selectedDetection, setSelectedDetection] = useState<Detection | null>(null)
-  const [isUploading, setIsUploading] = useState(false)
-  const [selectedFile, setSelectedFile] = useState<File | null>(null)
-  const [imageUrl, setImageUrl] = useState("")
-  const [currentPage, setCurrentPage] = useState(1)
-  const [totalPages, setTotalPages] = useState(1)
+  const { hasRole, user } = useAuth();
+  const [detections, setDetections] = useState<Detection[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSheetOpen, setIsSheetOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [selectedDetection, setSelectedDetection] = useState<Detection | null>(
+    null
+  );
+  const [isUploading, setIsUploading] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [imageUrl, setImageUrl] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
 
-  const canUpload = hasRole(["FARMER"])
-  const canDelete = hasRole(["ADMIN", "AGRONOMIST"])
+  const canUpload = hasRole(["FARMER"]);
+  const canDelete = hasRole(["ADMIN", "AGRONOMIST"]);
 
   useEffect(() => {
-    fetchDetections()
-  }, [currentPage])
+    fetchDetections();
+  }, [currentPage]);
 
   const fetchDetections = async () => {
-    setIsLoading(true)
+    setIsLoading(true);
     try {
       const response = hasRole(["FARMER"])
         ? await detectionApi.getMy(currentPage, 10)
-        : await detectionApi.getAll(currentPage, 10)
+        : await detectionApi.getAll(currentPage, 10);
 
-      setDetections(response.data)
-      setTotalPages(response.totalPages)
+      setDetections(response.data);
+      setTotalPages(response.totalPages);
     } catch (error: any) {
-      toast.error(error.response?.data?.message || "Failed to fetch detections")
+      toast.error(
+        error.response?.data?.message || "Failed to fetch detections"
+      );
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   const handleFileUpload = async (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
     if (!selectedFile && !imageUrl) {
-      toast.error("Please select a file or enter an image URL")
-      return
+      toast.error("Please select a file or enter an image URL");
+      return;
     }
 
-    setIsUploading(true)
+    setIsUploading(true);
     try {
-      const uploadData: CreateDetectionRequest = {}
+      const uploadData: CreateDetectionRequest = {};
 
       if (selectedFile) {
-        uploadData.image = selectedFile
+        uploadData.image = selectedFile;
       } else if (imageUrl) {
-        uploadData.imageUrl = imageUrl
+        uploadData.imageUrl = imageUrl;
       }
 
-      await detectionApi.detect(uploadData)
-      toast.success("Detection uploaded and analyzed successfully!")
-      setIsSheetOpen(false)
-      resetForm()
-      fetchDetections()
+      await detectionApi.detect(uploadData);
+      toast.success("Detection uploaded and analyzed successfully!");
+      setIsSheetOpen(false);
+      resetForm();
+      fetchDetections();
     } catch (error: any) {
-      toast.error(error.response?.data?.message || "Failed to upload detection")
+      toast.error(
+        error.response?.data?.message || "Failed to upload detection"
+      );
     } finally {
-      setIsUploading(false)
+      setIsUploading(false);
     }
-  }
+  };
 
   const handleDelete = async () => {
-    if (!selectedDetection) return
+    if (!selectedDetection) return;
 
     try {
-      await detectionApi.delete(selectedDetection.id)
-      toast.success("Detection deleted successfully")
-      setIsDeleteDialogOpen(false)
-      setSelectedDetection(null)
-      fetchDetections()
+      await detectionApi.delete(selectedDetection.id);
+      toast.success("Detection deleted successfully");
+      setIsDeleteDialogOpen(false);
+      setSelectedDetection(null);
+      fetchDetections();
     } catch (error: any) {
-      toast.error(error.response?.data?.message || "Failed to delete detection")
+      toast.error(
+        error.response?.data?.message || "Failed to delete detection"
+      );
     }
-  }
+  };
 
   const openDeleteDialog = (detection: Detection) => {
-    setSelectedDetection(detection)
-    setIsDeleteDialogOpen(true)
-  }
+    setSelectedDetection(detection);
+    setIsDeleteDialogOpen(true);
+  };
 
   const resetForm = () => {
-    setSelectedFile(null)
-    setImageUrl("")
-  }
+    setSelectedFile(null);
+    setImageUrl("");
+  };
 
   const getRoleBasedTitle = () => {
-    if (hasRole("FARMER")) return "My Detections"
-    if (hasRole("AGRONOMIST")) return "Farmer Detections"
-    return "All Detections"
-  }
+    if (hasRole("FARMER")) return "My Detections";
+    if (hasRole("AGRONOMIST")) return "Farmer Detections";
+    return "All Detections";
+  };
 
   const getRoleBasedDescription = () => {
-    if (hasRole("FARMER")) return "Upload images and view your disease detection history"
-    if (hasRole("AGRONOMIST")) return "Review farmer detections and provide expert advice"
-    return "Manage all disease detections in the system"
-  }
+    if (hasRole("FARMER"))
+      return "Upload images and view your disease detection history";
+    if (hasRole("AGRONOMIST"))
+      return "Review farmer detections and provide expert advice";
+    return "Manage all disease detections in the system";
+  };
 
   if (isLoading) {
     return (
@@ -143,14 +187,16 @@ export default function DetectionsPage() {
           </CardContent>
         </Card>
       </div>
-    )
+    );
   }
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">{getRoleBasedTitle()}</h1>
+          <h1 className="text-3xl font-bold tracking-tight">
+            {getRoleBasedTitle()}
+          </h1>
           <p className="text-muted-foreground">{getRoleBasedDescription()}</p>
         </div>
         {canUpload && (
@@ -164,7 +210,9 @@ export default function DetectionsPage() {
             <SheetContent>
               <SheetHeader>
                 <SheetTitle>Upload New Detection</SheetTitle>
-                <SheetDescription>Upload an image for AI-powered disease detection analysis</SheetDescription>
+                <SheetDescription>
+                  Upload an image for AI-powered disease detection analysis
+                </SheetDescription>
               </SheetHeader>
               <form onSubmit={handleFileUpload} className="space-y-6 mt-6">
                 <div className="space-y-2">
@@ -173,13 +221,21 @@ export default function DetectionsPage() {
                     id="file"
                     type="file"
                     accept="image/*"
-                    onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+                    onChange={(e) =>
+                      setSelectedFile(e.target.files?.[0] || null)
+                    }
                     disabled={isUploading}
                   />
-                  {selectedFile && <p className="text-sm text-muted-foreground">Selected: {selectedFile.name}</p>}
+                  {selectedFile && (
+                    <p className="text-sm text-muted-foreground">
+                      Selected: {selectedFile.name}
+                    </p>
+                  )}
                 </div>
 
-                <div className="text-center text-sm text-muted-foreground">or</div>
+                <div className="text-center text-sm text-muted-foreground">
+                  or
+                </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="url">Image URL</Label>
@@ -193,7 +249,11 @@ export default function DetectionsPage() {
                   />
                 </div>
 
-                <Button type="submit" className="w-full" disabled={isUploading || (!selectedFile && !imageUrl)}>
+                <Button
+                  type="submit"
+                  className="w-full"
+                  disabled={isUploading || (!selectedFile && !imageUrl)}
+                >
                   {isUploading ? (
                     <>
                       <Upload className="mr-2 h-4 w-4 animate-spin" />
@@ -225,9 +285,13 @@ export default function DetectionsPage() {
           {detections.length === 0 ? (
             <div className="text-center py-12">
               <Camera className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-lg font-semibold mb-2">No detections found</h3>
+              <h3 className="text-lg font-semibold mb-2">
+                No detections found
+              </h3>
               <p className="text-muted-foreground">
-                {canUpload ? "Upload your first image to get started" : "No detections have been uploaded yet"}
+                {canUpload
+                  ? "Upload your first image to get started"
+                  : "No detections have been uploaded yet"}
               </p>
             </div>
           ) : (
@@ -249,54 +313,82 @@ export default function DetectionsPage() {
                     <TableRow key={detection.id}>
                       <TableCell>
                         <img
-                          src={detection.image || "/placeholder.svg?height=50&width=50"}
+                          src={
+                            detection.image ||
+                            "/placeholder.svg?height=50&width=50"
+                          }
                           alt="Detection"
                           className="h-12 w-12 rounded-md object-cover"
                         />
                       </TableCell>
-                      <TableCell className="font-medium">{detection.disease?.name || "Unknown"}</TableCell>
+                      <TableCell className="font-medium">
+                        {detection.disease?.name || "Unknown"}
+                      </TableCell>
                       <TableCell>
                         <Badge
                           variant={
                             detection.confidence > 0.9
                               ? "default"
                               : detection.confidence > 0.7
-                                ? "secondary"
-                                : "outline"
+                              ? "secondary"
+                              : "outline"
                           }
                         >
                           {Math.round(detection.confidence * 100)}%
                         </Badge>
                       </TableCell>
-                      <TableCell>{new Date(detection.detectedAt).toLocaleDateString()}</TableCell>
+                      <TableCell>
+                        {new Date(detection.detectedAt).toLocaleDateString()}
+                      </TableCell>
                       {!hasRole("FARMER") && (
                         <TableCell>
                           <Badge variant="outline">
-                            {detection.farmer?.user?.username || detection.farmer?.user?.email || "Unknown"}
+                            {detection.farmer?.user?.username ||
+                              detection.farmer?.user?.email ||
+                              "Unknown"}
                           </Badge>
                         </TableCell>
                       )}
                       <TableCell>
-                        <Badge variant={detection.advices?.length > 0 ? "default" : "secondary"}>
-                          {detection.advices?.length > 0 ? "Advised" : "Pending"}
+                        <Badge
+                          variant={
+                            detection.advices?.length > 0
+                              ? "default"
+                              : "secondary"
+                          }
+                        >
+                          {detection.advices?.length > 0
+                            ? "Advised"
+                            : "Pending"}
                         </Badge>
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center space-x-2">
                           <Button variant="ghost" size="sm" asChild>
-                            <Link href={`/dashboard/detections/${detection.id}`}>
+                            <Link
+                              href={`/dashboard/detections/${detection.id}`}
+                            >
                               <Eye className="h-4 w-4" />
                             </Link>
                           </Button>
                           {hasRole(["AGRONOMIST"]) && (
-                            <Button variant="ghost" size="sm" title="Provide Advice" asChild>
-                              <Link href={`/dashboard/advices?detectionId=${detection.id}`}>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              title="Provide Advice"
+                              asChild
+                            >
+                              <Link href={`/dashboard/advices/${detection.id}`}>
                                 <MessageSquare className="h-4 w-4" />
                               </Link>
                             </Button>
                           )}
                           {canDelete && (
-                            <Button variant="ghost" size="sm" onClick={() => openDeleteDialog(detection)}>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => openDeleteDialog(detection)}
+                            >
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           )}
@@ -309,12 +401,16 @@ export default function DetectionsPage() {
 
               {/* Pagination */}
               <div className="flex items-center justify-between mt-4">
-                <p className="text-sm text-muted-foreground">Showing {detections.length} detections</p>
+                <p className="text-sm text-muted-foreground">
+                  Showing {detections.length} detections
+                </p>
                 <div className="flex items-center space-x-2">
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                    onClick={() =>
+                      setCurrentPage((prev) => Math.max(1, prev - 1))
+                    }
                     disabled={currentPage === 1}
                   >
                     Previous
@@ -325,7 +421,9 @@ export default function DetectionsPage() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                    onClick={() =>
+                      setCurrentPage((prev) => Math.min(totalPages, prev + 1))
+                    }
                     disabled={currentPage === totalPages}
                   >
                     Next
@@ -346,12 +444,15 @@ export default function DetectionsPage() {
               <span>Confirm Deletion</span>
             </DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete this detection? This action cannot be undone and will also remove all
-              associated advice and feedback.
+              Are you sure you want to delete this detection? This action cannot
+              be undone and will also remove all associated advice and feedback.
             </DialogDescription>
           </DialogHeader>
           <div className="flex justify-end space-x-2 mt-4">
-            <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setIsDeleteDialogOpen(false)}
+            >
               Cancel
             </Button>
             <Button variant="destructive" onClick={handleDelete}>
@@ -361,5 +462,5 @@ export default function DetectionsPage() {
         </DialogContent>
       </Dialog>
     </div>
-  )
+  );
 }

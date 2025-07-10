@@ -1,7 +1,8 @@
-"use client"
-import Link from "next/link"
-import { usePathname } from "next/navigation"
-import { useAuth } from "@/lib/auth/auth-context"
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useAuth } from "@/lib/auth/auth-context";
 import {
   Sidebar,
   SidebarContent,
@@ -13,13 +14,18 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-} from "@/components/ui/sidebar"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+} from "@/components/ui/sidebar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   LayoutDashboard,
   Camera,
-  WormIcon as Virus,
+  // ShieldVirus,
   Pill,
   MessageSquare,
   MessageCircle,
@@ -28,96 +34,110 @@ import {
   ChevronUp,
   LogOut,
   Settings,
-} from "lucide-react"
+  AlignVerticalJustifyStartIcon,
+  Biohazard,
+} from "lucide-react";
 
 const navigationItems = [
   {
     title: "Dashboard",
     url: "/dashboard",
     icon: LayoutDashboard,
-    roles: ["*"], // All roles
+    roles: ["*"],
   },
   {
     title: "Detections",
     url: "/dashboard/detections",
     icon: Camera,
-    roles: ["FARMER", "AGRONOMIST", "ADMIN"], // Updated to match specs
+    roles: ["FARMER", "AGRONOMIST", "ADMIN"],
   },
   {
     title: "Diseases",
     url: "/dashboard/diseases",
-    icon: Virus,
-    roles: ["AGRONOMIST", "ADMIN","FARMER"], // Only Admin can access diseases
+    icon: AlignVerticalJustifyStartIcon,
+    roles: ["AGRONOMIST", "ADMIN", "FARMER"],
   },
   {
     title: "Medicines",
     url: "/dashboard/medicines",
     icon: Pill,
-    roles: ["AGRONOMIST", "ADMIN"], // Agronomist and Admin only
+    roles: ["AGRONOMIST", "ADMIN"],
   },
   {
     title: "Advices",
     url: "/dashboard/advices",
     icon: MessageSquare,
-    roles: ["FARMER", "AGRONOMIST", "ADMIN"], // All three main roles
+    roles: ["FARMER", "AGRONOMIST", "ADMIN"],
   },
   {
     title: "Feedback",
     url: "/dashboard/feedback",
     icon: MessageCircle,
-    roles: ["FARMER", "AGRONOMIST", "ADMIN"], // All three main roles
+    roles: ["FARMER", "AGRONOMIST"],
   },
   {
     title: "Feedback Responses",
     url: "/dashboard/feedback-responses",
     icon: MessageCircle,
-    roles: ["AGRONOMIST", "ADMIN"], // Only Agronomist and Admin
+    roles: ["AGRONOMIST"],
   },
   {
     title: "Notifications",
     url: "/dashboard/notifications",
     icon: Bell,
-    roles: ["*"], // All roles
+    roles: ["FARMER"],
   },
   {
     title: "Users",
     url: "/dashboard/users",
     icon: Users,
-    roles: ["ADMIN"], // Admin only
+    roles: ["ADMIN"],
   },
-]
+];
 
 export function AppSidebar() {
-  const pathname = usePathname()
-  const { user, logout, hasRole } = useAuth()
+  const pathname = usePathname();
+  const { user, logout, hasRole } = useAuth();
 
-  const filteredItems = navigationItems.filter((item) => item.roles.includes("*") || hasRole(item.roles))
+  const filteredItems = navigationItems.filter(
+    (item) => item.roles.includes("*") || hasRole(item.roles)
+  );
 
   return (
-    <Sidebar>
+    <Sidebar className="border-r bg-white shadow-sm">
       <SidebarHeader>
-        <div className="flex items-center gap-2 px-2 py-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-            <Virus className="h-4 w-4" />
+        <div className="flex items-center gap-3 px-4 py-4">
+          <div className="flex h-10 w-10 items-center justify-center rounded-md bg-primary text-white">
+            <Biohazard className="h-5 w-5" />
           </div>
           <div className="flex flex-col">
-            <span className="text-sm font-semibold">TomatoAI</span>
-            <span className="text-xs text-muted-foreground">Disease Detection</span>
+            <span className="text-base font-bold leading-tight">TomatoAI</span>
+            <span className="text-xs text-muted-foreground">
+              Disease Detection
+            </span>
           </div>
         </div>
       </SidebarHeader>
-
-      <SidebarContent>
+      <SidebarContent className="px-2">
         <SidebarGroup>
-          <SidebarGroupLabel>Navigation</SidebarGroupLabel>
+          <SidebarGroupLabel className="text-muted-foreground px-2 text-xs uppercase tracking-widest">
+            Navigation
+          </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {filteredItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild isActive={pathname === item.url}>
-                    <Link href={item.url}>
-                      <item.icon className="h-4 w-4" />
-                      <span>{item.title}</span>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={pathname === item.url}
+                    className="group"
+                  >
+                    <Link
+                      href={item.url}
+                      className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-accent transition-colors"
+                    >
+                      <item.icon className="h-4 w-4 text-muted-foreground group-hover:text-primary" />
+                      <span className="text-sm">{item.title}</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -127,37 +147,39 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <SidebarMenuButton>
-                  <Avatar className="h-6 w-6">
-                    <AvatarImage src={user?.profilePicture || "/placeholder.svg"} />
-                    <AvatarFallback>{user?.email?.charAt(0).toUpperCase()}</AvatarFallback>
-                  </Avatar>
-                  <div className="flex flex-col items-start">
-                    <span className="text-sm font-medium">{user?.username || user?.email}</span>
-                    <span className="text-xs text-muted-foreground">{user?.role}</span>
-                  </div>
-                  <ChevronUp className="ml-auto h-4 w-4" />
-                </SidebarMenuButton>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent side="top" className="w-[--radix-popper-anchor-width]">
-                <DropdownMenuItem>
-                  <Settings className="mr-2 h-4 w-4" />
-                  <span>Settings</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={logout}>
-                  <LogOut className="mr-2 h-4 w-4" />
-                  <span>Sign out</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </SidebarMenuItem>
-        </SidebarMenu>
+      <SidebarFooter className="border-t px-4 py-4">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <div className="flex w-full items-center gap-3 cursor-pointer rounded-md px-2 py-2 hover:bg-accent transition-colors">
+              <Avatar className="h-8 w-8">
+                <AvatarImage src={user?.profilePicture || "/placeholder.svg"} />
+                <AvatarFallback>
+                  {user?.email?.[0]?.toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex flex-col">
+                <span className="text-sm font-medium leading-none">
+                  {user?.username || user?.email}
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  {user?.role}
+                </span>
+              </div>
+              <ChevronUp className="ml-auto h-4 w-4 text-muted-foreground" />
+            </div>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent side="top" className="w-[220px]">
+            <DropdownMenuItem>
+              <Settings className="mr-2 h-4 w-4 text-muted-foreground" />
+              <span>Settings</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={logout}>
+              <LogOut className="mr-2 h-4 w-4 text-red-500" />
+              <span className="text-red-500">Sign out</span>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </SidebarFooter>
     </Sidebar>
-  )
+  );
 }

@@ -1,76 +1,116 @@
-"use client"
+"use client";
 
-import { useAuth } from "@/lib/auth/auth-context"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Camera, WormIcon as Virus, Pill, MessageSquare, Users, Bell, MessageCircle } from "lucide-react"
+import { useAuth } from "@/lib/auth/auth-context";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import {
+  Camera,
+  WormIcon as Virus,
+  Pill,
+  MessageSquare,
+  Users,
+  Bell,
+  MessageCircle,
+} from "lucide-react";
+import { useAppContext } from "@/Config/AppProvider";
 
 export default function DashboardPage() {
-  const { user, hasRole } = useAuth()
+  const { user, hasRole } = useAuth();
+
+  const {
+    farmerStatistics,
+    farmerStatisticsLoading,
+    farmerStatisticsError,
+    farmerStatisticsErrorMessage,
+    agronomistStatistics,
+    agronomistStatisticsLoading,
+    agronomistStatisticsError,
+    agronomistStatisticsErrorMessage,
+    notificationsData,
+    notificationsLoading,
+    notificationsError,
+    notificationsErrorMessage,
+    refetchNotifications,
+  } = useAppContext();
 
   const getRoleSpecificStats = () => {
     if (hasRole("FARMER")) {
       return [
         {
           title: "My Detections",
-          value: "23",
+          value: farmerStatistics?.data?.totalDetections || "0",
           description: "Disease detections uploaded",
           icon: Camera,
           color: "bg-blue-500",
         },
         {
           title: "Advice Received",
-          value: "12",
+          value: farmerStatistics?.data?.adviceStats?.total || "0",
           description: "Expert recommendations",
           icon: MessageSquare,
           color: "bg-green-500",
         },
         {
           title: "Feedback Submitted",
-          value: "8",
+          value: farmerStatistics?.data?.feedbackStatus?.total || "0",
           description: "Feedback on advice",
           icon: MessageCircle,
           color: "bg-yellow-500",
         },
         {
           title: "Notifications",
-          value: "3",
+          value:
+            notificationsData?.data?.filter((n) => !n.isRead).length || "0",
           description: "Unread notifications",
           icon: Bell,
           color: "bg-orange-500",
         },
-      ]
+      ];
     } else if (hasRole("AGRONOMIST")) {
       return [
         {
           title: "Detections to Review",
-          value: "45",
+          value: agronomistStatistics?.data?.recentDetections.count || "0",
           description: "Pending farmer detections",
           icon: Camera,
           color: "bg-blue-500",
         },
         {
-          title: "Advice Given",
-          value: "89",
-          description: "Expert recommendations provided",
-          icon: MessageSquare,
-          color: "bg-green-500",
+          title: "Total diseases",
+          value: agronomistStatistics?.data?.totalDiseases || "0",
+          description: "Diseases tracked in the system",
+          icon: Virus,
         },
+
         {
           title: "Medicines Managed",
-          value: "34",
+          value: agronomistStatistics?.data?.totalMedicines || "0",
           description: "Treatment options available",
           icon: Pill,
           color: "bg-purple-500",
         },
-        {
-          title: "Feedback Responses",
-          value: "67",
-          description: "Responses to farmer feedback",
-          icon: MessageCircle,
-          color: "bg-yellow-500",
-        },
-      ]
+
+        // {
+        //   title: "Advice Given",
+        //   value: agronomistStatistics?.data?.advicePerformance?.total || "0",
+        //   description: "Expert recommendations provided",
+        //   icon: MessageSquare,
+        //   color: "bg-green-500",
+        // },
+        // {
+        //   title: "Feedback Responses",
+        //   value: agronomistStatistics?.data?.farmerStats?.activeFarmers || "0",
+        //   description: "Responses to farmer feedback",
+        //   icon: MessageCircle,
+        //   color: "bg-yellow-500",
+        // },
+      ];
     } else {
       return [
         {
@@ -101,38 +141,40 @@ export default function DashboardPage() {
           icon: Bell,
           color: "bg-purple-500",
         },
-      ]
+      ];
     }
-  }
+  };
 
   const getRoleBasedWelcome = () => {
     if (hasRole("FARMER")) {
       return {
         title: "Farmer Dashboard",
         subtitle: "Upload images and get expert advice on tomato diseases",
-      }
+      };
     } else if (hasRole("AGRONOMIST")) {
       return {
         title: "Agronomist Dashboard",
         subtitle: "Review detections and provide expert guidance to farmers",
-      }
+      };
     } else {
       return {
         title: "Admin Dashboard",
         subtitle: "Manage the entire tomato disease detection system",
-      }
+      };
     }
-  }
+  };
 
-  const stats = getRoleSpecificStats()
-  const welcome = getRoleBasedWelcome()
+  const stats = getRoleSpecificStats();
+  const welcome = getRoleBasedWelcome();
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">{welcome.title}</h1>
-          <p className="text-muted-foreground">Welcome back, {user?.username || user?.email}</p>
+          <p className="text-muted-foreground">
+            Welcome back, {user?.username || user?.email}
+          </p>
           <p className="text-sm text-muted-foreground">{welcome.subtitle}</p>
         </div>
         <Badge variant="secondary" className="text-sm">
@@ -144,14 +186,18 @@ export default function DashboardPage() {
         {stats.map((stat) => (
           <Card key={stat.title}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
+              <CardTitle className="text-sm font-medium">
+                {stat.title}
+              </CardTitle>
               <div className={`p-2 rounded-md ${stat.color}`}>
                 <stat.icon className="h-4 w-4 text-white" />
               </div>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stat.value}</div>
-              <p className="text-xs text-muted-foreground">{stat.description}</p>
+              <p className="text-xs text-muted-foreground">
+                {stat.description}
+              </p>
             </CardContent>
           </Card>
         ))}
@@ -170,15 +216,21 @@ export default function DashboardPage() {
                   <div className="flex items-center space-x-4">
                     <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                     <div className="flex-1">
-                      <p className="text-sm font-medium">New detection uploaded</p>
-                      <p className="text-xs text-muted-foreground">2 minutes ago</p>
+                      <p className="text-sm font-medium">
+                        New detection uploaded
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        2 minutes ago
+                      </p>
                     </div>
                   </div>
                   <div className="flex items-center space-x-4">
                     <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
                     <div className="flex-1">
                       <p className="text-sm font-medium">Advice received</p>
-                      <p className="text-xs text-muted-foreground">1 hour ago</p>
+                      <p className="text-xs text-muted-foreground">
+                        1 hour ago
+                      </p>
                     </div>
                   </div>
                 </>
@@ -187,15 +239,21 @@ export default function DashboardPage() {
                   <div className="flex items-center space-x-4">
                     <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
                     <div className="flex-1">
-                      <p className="text-sm font-medium">New detection to review</p>
-                      <p className="text-xs text-muted-foreground">5 minutes ago</p>
+                      <p className="text-sm font-medium">
+                        New detection to review
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        5 minutes ago
+                      </p>
                     </div>
                   </div>
                   <div className="flex items-center space-x-4">
                     <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                     <div className="flex-1">
                       <p className="text-sm font-medium">Advice provided</p>
-                      <p className="text-xs text-muted-foreground">30 minutes ago</p>
+                      <p className="text-xs text-muted-foreground">
+                        30 minutes ago
+                      </p>
                     </div>
                   </div>
                 </>
@@ -204,15 +262,21 @@ export default function DashboardPage() {
                   <div className="flex items-center space-x-4">
                     <div className="w-2 h-2 bg-red-500 rounded-full"></div>
                     <div className="flex-1">
-                      <p className="text-sm font-medium">System alert resolved</p>
-                      <p className="text-xs text-muted-foreground">10 minutes ago</p>
+                      <p className="text-sm font-medium">
+                        System alert resolved
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        10 minutes ago
+                      </p>
                     </div>
                   </div>
                   <div className="flex items-center space-x-4">
                     <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
                     <div className="flex-1">
                       <p className="text-sm font-medium">New user registered</p>
-                      <p className="text-xs text-muted-foreground">1 hour ago</p>
+                      <p className="text-xs text-muted-foreground">
+                        1 hour ago
+                      </p>
                     </div>
                   </div>
                 </>
@@ -273,5 +337,5 @@ export default function DashboardPage() {
         </Card>
       </div>
     </div>
-  )
+  );
 }

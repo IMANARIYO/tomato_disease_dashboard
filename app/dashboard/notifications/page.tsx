@@ -1,59 +1,58 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { useAuth } from "@/lib/auth/auth-context"
-import { notificationApi } from "@/lib/api/notification"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Bell, BellOff, Trash2, CheckCheck } from "lucide-react"
-import { toast } from "react-hot-toast"
-import type { Notification } from "@/types"
+import { useState, useEffect } from "react";
+import { useAuth } from "@/lib/auth/auth-context";
+import { notificationApi } from "@/lib/api/notification";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Bell, BellOff, Trash2, CheckCheck } from "lucide-react";
+import { toast } from "react-hot-toast";
+import type { Notification } from "@/types";
+import { useAppContext } from "@/Config/AppProvider";
 
 export default function NotificationsPage() {
-  const { user } = useAuth()
-  const [notifications, setNotifications] = useState<Notification[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+  const { user } = useAuth();
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
+  const {
+    notificationsData,
+    notificationsLoading,
+    notificationsError,
+    notificationsErrorMessage,
+    refetchNotifications: fetchNotificationsFromContext,
+  } = useAppContext();
   useEffect(() => {
-    fetchNotifications()
-  }, [])
-
-  const fetchNotifications = async () => {
-    try {
-      const response = await notificationApi.getMy(1, 50)
-      setNotifications(response.data)
-    } catch (error) {
-      toast.error("Failed to fetch notifications")
-    } finally {
-      setIsLoading(false)
-    }
-  }
+    // fetchNotifications();
+  }, []);
 
   const handleMarkAllRead = async () => {
     try {
-      await notificationApi.markAllRead()
-      toast.success("All notifications marked as read")
-      fetchNotifications()
+      await notificationApi.markAllRead();
+      toast.success("All notifications marked as read");
+      // fetchNotifications();
     } catch (error) {
-      toast.error("Failed to mark notifications as read")
+      toast.error("Failed to mark notifications as read");
     }
-  }
+  };
 
   const handleDelete = async (id: string) => {
     try {
-      await notificationApi.delete(id)
-      toast.success("Notification deleted")
-      fetchNotifications()
+      await notificationApi.delete(id);
+      toast.success("Notification deleted");
+      // fetchNotifications();
     } catch (error) {
-      toast.error("Failed to delete notification")
+      toast.error("Failed to delete notification");
     }
-  }
+  };
 
-  const unreadCount = notifications.filter((n) => !n.isRead).length
+  const unreadCount = notificationsData
+    ? notificationsData?.data?.filter((n) => !n.isRead).length
+    : 0;
 
-  if (isLoading) {
-    return <div>Loading...</div>
+  if (notificationsLoading) {
+    return <div>Loading...</div>;
   }
 
   return (
@@ -62,7 +61,9 @@ export default function NotificationsPage() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Notifications</h1>
           <p className="text-muted-foreground">
-            {unreadCount > 0 ? `${unreadCount} unread notifications` : "All caught up!"}
+            {unreadCount > 0
+              ? `${unreadCount} unread notifications`
+              : "All caught up!"}
           </p>
         </div>
         {unreadCount > 0 && (
@@ -74,7 +75,7 @@ export default function NotificationsPage() {
       </div>
 
       <div className="space-y-4">
-        {notifications.length === 0 ? (
+        {notificationsLoading ? (
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-12">
               <BellOff className="h-12 w-12 text-muted-foreground mb-4" />
@@ -85,32 +86,45 @@ export default function NotificationsPage() {
             </CardContent>
           </Card>
         ) : (
-          notifications.map((notification) => (
-            <Card key={notification.id} className={notification.isRead ? "opacity-60" : ""}>
+          notificationsData?.data?.map((notification) => (
+            <Card
+              key={notification.id}
+              className={notification.isRead ? "opacity-60" : ""}
+            >
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between">
                   <div className="flex items-center space-x-2">
                     <Bell className="h-4 w-4 text-muted-foreground" />
-                    <CardTitle className="text-base">{notification.title}</CardTitle>
+                    <CardTitle className="text-base">
+                      {notification.title}
+                    </CardTitle>
                     {!notification.isRead && (
                       <Badge variant="default" className="text-xs">
                         New
                       </Badge>
                     )}
                   </div>
-                  <Button variant="ghost" size="sm" onClick={() => handleDelete(notification.id)}>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleDelete(notification.id)}
+                  >
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
               </CardHeader>
               <CardContent>
-                <p className="text-muted-foreground mb-2">{notification.message}</p>
-                <p className="text-xs text-muted-foreground">{new Date(notification.createdAt).toLocaleString()}</p>
+                <p className="text-muted-foreground mb-2">
+                  {notification.message}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {new Date(notification.createdAt).toLocaleString()}
+                </p>
               </CardContent>
             </Card>
           ))
         )}
       </div>
     </div>
-  )
+  );
 }
